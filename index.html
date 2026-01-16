@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMI 學生素養分層分析儀表板</title>
-    <!-- 核心庫載入 -->
+    <!-- 核心庫載入：順序必須為 React -> PropTypes -> Recharts -> Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -19,12 +19,25 @@
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         .bg-stats-bar { height: 54px; border-radius: 27px; overflow: hidden; display: flex; align-items: center; background-color: #f3f4f6; border: 1px solid #e5e7eb; }
         .bg-stats-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 1000; color: white; transition: width 1s ease-in-out; text-shadow: 0px 1px 3px rgba(0,0,0,0.3); }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     </style>
 </head>
 <body>
+    <!-- 初始載入提示，避免部署後出現白屏感 -->
+    <div id="loading-screen">
+        <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+        <p class="mt-4 font-black text-gray-400 animate-pulse">儀表板程式初始化中...</p>
+    </div>
+
     <div id="root"></div>
 
     <script type="text/babel">
+        // 隱藏初始載入畫面
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loading-screen');
+            if (loader) loader.style.display = 'none';
+        });
+
         const { 
             BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
             Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -32,7 +45,7 @@
         } = window.Recharts;
 
         // ==========================================
-        // 🚀 數據源連結設定 (請確保這串連結結尾是 output=csv)
+        // 🚀 數據源連結設定 (您的 Google Sheet CSV 連結)
         // ==========================================
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSwjy6yzJBLRTkUDWHqtL62BvHMBlnbkzokDViZuIXUqTy7vd2_gy3I6Oyn3WWi0_46K_50-XMoZ7bs/pub?gid=1366984866&single=true&output=csv"; 
 
@@ -57,13 +70,10 @@
         const PREFERRED_ORDER = ['Overall (全校整體)', '工程學院', '電資學院', '管理學院', '應科學院', '設計學院', '人文學院', '產創學院', '通識中心'];
 
         function parseCSV(text) {
-            // 移除 UTF-8 BOM 開頭
             const cleanText = text.replace(/^\uFEFF/, "");
             const lines = cleanText.split(/\r?\n/).filter(l => l.trim() !== "");
             if (lines.length < 2) return [];
-            
             const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-            
             return lines.slice(1).map(line => {
                 const values = [];
                 let current = "";
@@ -82,7 +92,6 @@
                 let obj = {};
                 header.forEach((key, idx) => {
                     let val = values[idx] || "";
-                    // 清理數值：移除引號、移除千分位逗號
                     val = val.replace(/^"|"$/g, '').replace(/(?!^\d+)\,(?=\d+)/g, ''); 
                     obj[key] = val;
                 });
@@ -110,7 +119,6 @@
         };
 
         function App() {
-            // 預設資料 (Fallback)
             const fallbackData = [
                 { 學期: "114-1", 單位: "Overall (全校整體)", 人數: 3340, 海外意願人數: 2871, 信心增加人數: 2405, 女性人數: 1101, 男性人數: 2239, 第一次修EMI人數: 1365, 非第一次修EMI人數: 1975, 自我調節學習: 3.8, "學術英語&學科學習": 3.6, Bloom認知: 3.8, 課程參與: 3.7, 自我效能: 3.8, 教師講授: 44, 師生互動: 21, 生生互動: 16, 學生報告: 15, 其他: 14, SRL1:3.8, SRL2:3.3, SRL3:3.8, SRL4:4.0, SRL5:4.0, CALP1:3.6, CALP2:3.6, CALP3:3.5, CALP4:3.5, CALP5:3.6, CALP6:3.5, Cog1:3.9, Cog2:3.8, Cog3:3.8, Cog4:3.8, Cog5:3.8, Cog6:3.7, Eng1:3.8, Eng2:3.8, Eng3:3.8, Eng4:3.3, Eng5:3.6, Eng6:3.7, Eng7:3.7, SE1:3.8, SE2:3.8, SE3:3.7, SE4:3.8, SE5:3.7, SE6:3.8 }
             ];
@@ -129,7 +137,6 @@
                         return;
                     }
                     try {
-                        // 加上 cache-buster 防止快取
                         const fetchUrl = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
                         const response = await fetch(fetchUrl, { cache: "no-store" });
                         if (!response.ok) throw new Error("Network error");
@@ -152,6 +159,8 @@
                         setDataStatus('error');
                     } finally {
                         setLoading(false);
+                        const loader = document.getElementById('loading-screen');
+                        if (loader) loader.style.display = 'none';
                     }
                 };
                 fetchData();
@@ -167,8 +176,6 @@
             const activeRaw = allRows.find(r => r.學期 === selectedSemester && r.單位 === selectedCollege) || allRows[0];
             const count = parseInt(activeRaw.人數 || 0);
 
-            if (loading) return <div className="flex h-screen items-center justify-center font-black text-2xl text-gray-400 animate-pulse text-center p-10">資料同步中...</div>;
-
             return (
                 <div className="max-w-7xl mx-auto p-4 md:p-8 fade-in">
                     <header className="flex flex-col md:flex-row justify-between items-center border-b-2 border-gray-100 pb-6 mb-8 gap-6 text-center md:text-left">
@@ -178,16 +185,16 @@
                                 {dataStatus === 'cloud' ? (
                                     <span className="px-3 py-1 bg-green-100 text-green-700 text-[11px] font-bold rounded-full">✅ 雲端同步中</span>
                                 ) : (
-                                    <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[11px] font-bold rounded-full">⚠️ 本地展示模式 (讀取雲端失敗)</span>
+                                    <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[11px] font-bold rounded-full">⚠️ 離線展示模式</span>
                                 )}
-                                <p className="text-gray-400 text-[11px] font-medium italic">NTUST EMI HELP</p>
+                                <p className="text-gray-400 text-[11px] font-medium italic text-sm">NTUST EMI HELP CENTER</p>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                             <div className="flex flex-col gap-1">
                                 <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest text-center md:text-left">學期</label>
                                 <select 
-                                    className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2 font-black text-gray-700 outline-none text-xl shadow-sm"
+                                    className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2 font-black text-gray-700 outline-none text-xl shadow-sm cursor-pointer"
                                     value={selectedSemester}
                                     onChange={(e) => setSelectedSemester(e.target.value)}
                                 >
@@ -207,7 +214,7 @@
                         </div>
                     </header>
 
-                    {/* KPI 展示區 */}
+                    {/* 第一排 KPI */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 text-center md:text-left">
                         {[
                             { label: '有效問卷總數', val: count.toLocaleString(), icon: 'users', color: '#8697A8' },
@@ -226,7 +233,7 @@
                         ))}
                     </div>
 
-                    {/* KPI 第二排 */}
+                    {/* 第二排 KPI */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10 text-center">
                         {[
                             { label: '自我調節學習', val: activeRaw.自我調節學習, icon: 'target', color: '#8697A8' },
@@ -326,8 +333,8 @@
                         </div>
                     </div>
 
-                    <div className="bg-white border rounded-3xl p-8 shadow-sm mb-10">
-                        <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#B9B1D2] pl-4">30 項測量細項詳細平均分趨勢</h3>
+                    <div className="bg-white border rounded-3xl p-8 shadow-sm mb-10 text-center md:text-left">
+                        <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#B9B1D2] pl-4 text-sm">30 項測量細項詳細平均分趨勢</h3>
                         <div className="h-80">
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={Object.keys(activeRaw)
@@ -336,7 +343,7 @@
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                     <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: '900' }} interval={0} />
                                     <YAxis domain={[0, 5]} tick={{fontSize: 14, fontWeight: '900'}} />
-                                    <Tooltip />
+                                    <Tooltip cursor={{fill: 'transparent'}} />
                                     <Bar dataKey="score" fill="#E2B4BD" barSize={16} radius={[4, 4, 0, 0]} opacity={0.8} />
                                     <Line type="monotone" dataKey="score" stroke="#B9B1D2" dot={{ r: 4, fill: '#B9B1D2' }} strokeWidth={4} />
                                 </ComposedChart>
