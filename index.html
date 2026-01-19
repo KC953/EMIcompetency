@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMI 學生素養分層分析儀表板</title>
-    <!-- 核心庫載入：順序必須為 React -> PropTypes -> Recharts -> Babel -->
+    <!-- 核心庫載入 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -23,7 +23,7 @@
     </style>
 </head>
 <body>
-    <!-- 初始載入提示，避免部署後出現白屏感 -->
+    <!-- 初始載入提示 -->
     <div id="loading-screen">
         <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
         <p class="mt-4 font-black text-gray-400 animate-pulse">儀表板程式初始化中...</p>
@@ -159,8 +159,6 @@
                         setDataStatus('error');
                     } finally {
                         setLoading(false);
-                        const loader = document.getElementById('loading-screen');
-                        if (loader) loader.style.display = 'none';
                     }
                 };
                 fetchData();
@@ -181,20 +179,26 @@
                     <header className="flex flex-col md:flex-row justify-between items-center border-b-2 border-gray-100 pb-6 mb-8 gap-6 text-center md:text-left">
                         <div>
                             <h1 className="text-3xl font-black text-gray-800 tracking-tight">EMI 學生素養分層分析儀表板</h1>
-                            <div className="flex items-center gap-2 mt-2 justify-center md:justify-start">
+                            {/* 更新：依據篩選條件顯示當前視角文字 */}
+                            <p className="text-gray-500 font-medium mt-1">
+                                {selectedSemester} 學期 | 當前視角: <span className="text-[#9BADC1] font-bold underline decoration-4 underline-offset-8">{selectedCollege}</span>
+                            </p>
+                            {/* 將同步狀態移動到下方小型化顯示 */}
+                            <div className="flex items-center gap-2 mt-2 justify-center md:justify-start text-[11px] font-bold">
                                 {dataStatus === 'cloud' ? (
-                                    <span className="px-3 py-1 bg-green-100 text-green-700 text-[11px] font-bold rounded-full">✅ 雲端同步中</span>
+                                    <span className="text-green-600">● 雲端數據同步中</span>
                                 ) : (
-                                    <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[11px] font-bold rounded-full">⚠️ 離線展示模式</span>
+                                    <span className="text-amber-600">● 離線展示模式</span>
                                 )}
-                                <p className="text-gray-400 text-[11px] font-medium italic text-sm">NTUST EMI HELP CENTER</p>
+                                <span className="text-gray-300 mx-1">|</span>
+                                <p className="text-gray-400 italic">NTUST EMI HELP CENTER</p>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                             <div className="flex flex-col gap-1">
                                 <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest text-center md:text-left">學期</label>
                                 <select 
-                                    className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2 font-black text-gray-700 outline-none text-xl shadow-sm cursor-pointer"
+                                    className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2 font-black text-gray-700 outline-none text-xl shadow-sm cursor-pointer hover:border-[#9BADC1] transition-colors"
                                     value={selectedSemester}
                                     onChange={(e) => setSelectedSemester(e.target.value)}
                                 >
@@ -204,7 +208,7 @@
                             <div className="flex flex-col gap-1 min-w-[240px]">
                                 <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest text-center md:text-left">數據單位</label>
                                 <select 
-                                    className="w-full bg-white border-2 border-[#9BADC1] rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-[#9BADC1] outline-none font-black text-gray-700 text-xl transition-all cursor-pointer"
+                                    className="w-full bg-white border-2 border-[#9BADC1] rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-[#9BADC1] outline-none font-black text-gray-700 text-xl transition-all cursor-pointer hover:bg-gray-50"
                                     value={selectedCollege}
                                     onChange={(e) => setSelectedCollege(e.target.value)}
                                 >
@@ -214,7 +218,7 @@
                         </div>
                     </header>
 
-                    {/* 第一排 KPI */}
+                    {/* KPI 展示區 第一排 */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 text-center md:text-left">
                         {[
                             { label: '有效問卷總數', val: count.toLocaleString(), icon: 'users', color: '#8697A8' },
@@ -233,7 +237,7 @@
                         ))}
                     </div>
 
-                    {/* 第二排 KPI */}
+                    {/* KPI 展示區 第二排 */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10 text-center">
                         {[
                             { label: '自我調節學習', val: activeRaw.自我調節學習, icon: 'target', color: '#8697A8' },
@@ -255,7 +259,9 @@
                         ))}
                     </div>
 
+                    {/* 中間圖表區 */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
+                        {/* 背景分佈 */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                             <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#9BADC1] pl-4 text-center md:text-left">學員背景資料分佈 (N={count})</h3>
                             <div className="space-y-12">
@@ -283,6 +289,7 @@
                             </div>
                         </div>
 
+                        {/* 雷達圖 */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center">
                             <h3 className="text-2xl font-black text-gray-700 mb-8 text-center">{selectedCollege} 素養評分雷達</h3>
                             <div className="h-96 w-full">
@@ -307,6 +314,7 @@
                         </div>
                     </div>
 
+                    {/* 教學占比 */}
                     <div className="bg-white p-10 rounded-3xl shadow-sm border border-gray-100 mb-10 text-center">
                         <h3 className="text-3xl font-black text-gray-700 mb-12 uppercase tracking-widest">EMI 課堂教學活動占比分布 (%)</h3>
                         <div className="h-96">
@@ -333,6 +341,7 @@
                         </div>
                     </div>
 
+                    {/* 詳細趨勢圖 */}
                     <div className="bg-white border rounded-3xl p-8 shadow-sm mb-10 text-center md:text-left">
                         <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#B9B1D2] pl-4 text-sm">30 項測量細項詳細平均分趨勢</h3>
                         <div className="h-80">
