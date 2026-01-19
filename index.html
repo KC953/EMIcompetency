@@ -11,7 +11,6 @@
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 使用穩定版本圖標庫 -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
@@ -23,21 +22,14 @@
     </style>
 </head>
 <body>
-    <!-- 初始載入提示 -->
     <div id="loading-screen">
         <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-        <p class="mt-4 font-black text-gray-400 animate-pulse">儀表板程式初始化中...</p>
+        <p class="mt-4 font-black text-gray-400 animate-pulse">數據引擎初始化中...</p>
     </div>
 
     <div id="root"></div>
 
     <script type="text/babel">
-        // 隱藏初始載入畫面
-        window.addEventListener('load', () => {
-            const loader = document.getElementById('loading-screen');
-            if (loader) loader.style.display = 'none';
-        });
-
         const { 
             BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
             Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -45,7 +37,7 @@
         } = window.Recharts;
 
         // ==========================================
-        // 🚀 數據源連結設定 (您的 Google Sheet CSV 連結)
+        // 🚀 數據源連結設定
         // ==========================================
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSwjy6yzJBLRTkUDWHqtL62BvHMBlnbkzokDViZuIXUqTy7vd2_gy3I6Oyn3WWi0_46K_50-XMoZ7bs/pub?gid=1366984866&single=true&output=csv"; 
 
@@ -73,7 +65,10 @@
             const cleanText = text.replace(/^\uFEFF/, "");
             const lines = cleanText.split(/\r?\n/).filter(l => l.trim() !== "");
             if (lines.length < 2) return [];
+            
+            // 🚀 關鍵強化：標頭(Header)也進行 trim() 清理，避免空格導致失效
             const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            
             return lines.slice(1).map(line => {
                 const values = [];
                 let current = "";
@@ -119,9 +114,7 @@
         };
 
         function App() {
-            const fallbackData = [
-                { 學期: "114-1", 單位: "Overall (全校整體)", 人數: 3340, 海外意願人數: 2871, 信心增加人數: 2405, 女性人數: 1101, 男性人數: 2239, 第一次修EMI人數: 1365, 非第一次修EMI人數: 1975, 自我調節學習: 3.8, "學術英語&學科學習": 3.6, Bloom認知: 3.8, 課程參與: 3.7, 自我效能: 3.8, 教師講授: 44, 師生互動: 21, 生生互動: 16, 學生報告: 15, 其他: 14, SRL1:3.8, SRL2:3.3, SRL3:3.8, SRL4:4.0, SRL5:4.0, CALP1:3.6, CALP2:3.6, CALP3:3.5, CALP4:3.5, CALP5:3.6, CALP6:3.5, Cog1:3.9, Cog2:3.8, Cog3:3.8, Cog4:3.8, Cog5:3.8, Cog6:3.7, Eng1:3.8, Eng2:3.8, Eng3:3.8, Eng4:3.3, Eng5:3.6, Eng6:3.7, Eng7:3.7, SE1:3.8, SE2:3.8, SE3:3.7, SE4:3.8, SE5:3.7, SE6:3.8 }
-            ];
+            const fallbackData = [{ 學期: "114-1", 單位: "Overall (全校整體)", 人數: 3340, 海外意願人數: 2871, 信心增加人數: 2405, 女性人數: 1101, 男性人數: 2239, 第一次修EMI人數: 1365, 非第一次修EMI人數: 1975, 自我調節學習: 3.8, "學術英語&學科學習": 3.6, Bloom認知: 3.8, 課程參與: 3.7, 自我效能: 3.8, 教師講授: 44, 師生互動: 21, 生生互動: 16, 學生報告: 15, 其他: 14 }];
 
             const [allRows, setAllRows] = React.useState(fallbackData);
             const [selectedSemester, setSelectedSemester] = React.useState('114-1');
@@ -131,11 +124,6 @@
 
             React.useEffect(() => {
                 const fetchData = async () => {
-                    if (!SHEET_CSV_URL) {
-                        setLoading(false);
-                        setDataStatus('static');
-                        return;
-                    }
                     try {
                         const fetchUrl = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
                         const response = await fetch(fetchUrl, { cache: "no-store" });
@@ -145,24 +133,33 @@
                         
                         if (data && data.length > 0) {
                             setAllRows(data);
-                            const firstSemester = data[0].學期;
-                            setSelectedSemester(firstSemester);
-                            const availableColleges = [...new Set(data.filter(r => r.學期 === firstSemester).map(r => r.單位))];
-                            const defaultCol = PREFERRED_ORDER.find(c => availableColleges.includes(c)) || availableColleges[0];
-                            setSelectedCollege(defaultCol);
+                            const firstSem = data[0].學期;
+                            setSelectedSemester(firstSem);
+                            const units = [...new Set(data.filter(r => r.學期 === firstSem).map(r => r.單位))];
+                            const defCol = PREFERRED_ORDER.find(c => units.includes(c)) || units[0];
+                            setSelectedCollege(defCol);
                             setDataStatus('cloud');
-                        } else {
-                            setDataStatus('empty');
                         }
                     } catch (e) {
-                        console.error("Fetch Error:", e);
                         setDataStatus('error');
                     } finally {
                         setLoading(false);
+                        const loader = document.getElementById('loading-screen');
+                        if (loader) loader.style.display = 'none';
                     }
                 };
                 fetchData();
             }, []);
+
+            // 🚀 當切換學期時，確保學院選單連動到該學期有的單位
+            React.useEffect(() => {
+                if (allRows.length <= 1) return;
+                const validColleges = [...new Set(allRows.filter(r => r.學期 === selectedSemester).map(r => String(r.單位).trim()))];
+                if (!validColleges.includes(String(selectedCollege).trim())) {
+                    const nextBest = PREFERRED_ORDER.find(c => validColleges.includes(c)) || validColleges[0];
+                    if (nextBest) setSelectedCollege(nextBest);
+                }
+            }, [selectedSemester, allRows]);
 
             const semesters = [...new Set(allRows.map(r => r.學期))].sort().reverse();
             const currentUnits = [...new Set(allRows.filter(r => r.學期 === selectedSemester).map(r => r.單位))];
@@ -171,25 +168,25 @@
                 ...currentUnits.filter(name => name && !PREFERRED_ORDER.includes(name))
             ];
 
-            const activeRaw = allRows.find(r => r.學期 === selectedSemester && r.單位 === selectedCollege) || allRows[0];
+            const activeRaw = allRows.find(r => 
+                String(r.學期).trim() === String(selectedSemester).trim() && 
+                String(r.單位).trim() === String(selectedCollege).trim()
+            ) || allRows.find(r => String(r.學期).trim() === String(selectedSemester).trim()) || allRows[0];
+
             const count = parseInt(activeRaw.人數 || 0);
+
+            if (loading) return null;
 
             return (
                 <div className="max-w-7xl mx-auto p-4 md:p-8 fade-in">
                     <header className="flex flex-col md:flex-row justify-between items-center border-b-2 border-gray-100 pb-6 mb-8 gap-6 text-center md:text-left">
                         <div>
                             <h1 className="text-3xl font-black text-gray-800 tracking-tight">EMI 學生素養分層分析儀表板</h1>
-                            {/* 更新：依據篩選條件顯示當前視角文字 */}
                             <p className="text-gray-500 font-medium mt-1">
                                 {selectedSemester} 學期 | 當前視角: <span className="text-[#9BADC1] font-bold underline decoration-4 underline-offset-8">{selectedCollege}</span>
                             </p>
-                            {/* 將同步狀態移動到下方小型化顯示 */}
                             <div className="flex items-center gap-2 mt-2 justify-center md:justify-start text-[11px] font-bold">
-                                {dataStatus === 'cloud' ? (
-                                    <span className="text-green-600">● 雲端數據同步中</span>
-                                ) : (
-                                    <span className="text-amber-600">● 離線展示模式</span>
-                                )}
+                                {dataStatus === 'cloud' ? <span className="text-green-600">● 雲端數據同步中</span> : <span className="text-amber-600">● 離線展示模式</span>}
                                 <span className="text-gray-300 mx-1">|</span>
                                 <p className="text-gray-400 italic">NTUST EMI HELP CENTER</p>
                             </div>
@@ -259,11 +256,9 @@
                         ))}
                     </div>
 
-                    {/* 中間圖表區 */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
-                        {/* 背景分佈 */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                            <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#9BADC1] pl-4 text-center md:text-left">學生背景資料分佈 (N={count})</h3>
+                            <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#9BADC1] pl-4 text-center md:text-left">學員背景資料分佈 (N={count})</h3>
                             <div className="space-y-12">
                                 {[
                                     { label: '生理性別 (女性/男性)', val: parseInt(activeRaw.女性人數 || 0), total: count, posLabel: '女性', negLabel: '男性' },
@@ -289,7 +284,6 @@
                             </div>
                         </div>
 
-                        {/* 雷達圖 */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center">
                             <h3 className="text-2xl font-black text-gray-700 mb-8 text-center">{selectedCollege} 素養評分雷達</h3>
                             <div className="h-96 w-full">
@@ -314,7 +308,6 @@
                         </div>
                     </div>
 
-                    {/* 教學占比 */}
                     <div className="bg-white p-10 rounded-3xl shadow-sm border border-gray-100 mb-10 text-center">
                         <h3 className="text-3xl font-black text-gray-700 mb-12 uppercase tracking-widest">EMI 課堂教學活動占比分布 (%)</h3>
                         <div className="h-96">
@@ -341,7 +334,6 @@
                         </div>
                     </div>
 
-                    {/* 詳細趨勢圖 */}
                     <div className="bg-white border rounded-3xl p-8 shadow-sm mb-10 text-center md:text-left">
                         <h3 className="text-2xl font-black text-gray-700 mb-8 border-l-8 border-[#B9B1D2] pl-4 text-sm">30 項測量細項詳細平均分趨勢</h3>
                         <div className="h-80">
@@ -370,7 +362,7 @@
                     </div>
 
                     <footer className="mt-12 pt-8 border-t-4 border-gray-100 text-center text-xs font-black text-gray-300 uppercase tracking-[0.6em]">
-                        {selectedSemester} | {selectedCollege} | FACILITATED BY NTUST EMI HELP & GEMINI 2.5
+                        {selectedSemester} | {selectedCollege} | FACILITATED BY NTUST EMI HELP CENTER
                     </footer>
                 </div>
             );
